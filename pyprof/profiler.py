@@ -3,8 +3,6 @@ import time
 from threading import Thread
 from datetime import datetime
 
-import cv2
-import torch
 import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
