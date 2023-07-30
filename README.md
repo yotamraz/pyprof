@@ -46,4 +46,4 @@ Peak: 7950.625 MB
 
 #### html file:
 
-![example_plot.png](example_plot.png)
+![example_plot.png](doc/example_plot.png)
