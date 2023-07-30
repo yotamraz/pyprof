@@ -1,7 +1,7 @@
 # pyprof
 A simple python profiler for all mankind
 
-Track your CPU/Memory/CUDA utilization with a easy-to-use context wrapper
+Track your CPU/Memory/CUDA utilization with an easy-to-use context wrapper
 
 ## install
 ```
