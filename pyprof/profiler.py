@@ -37,11 +37,13 @@ class Profiler:
 
     def __enter__(self):
         self.event_thread.start()
+        self.start_time = datetime.now()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.exit_event_loop = True
         self.event_thread.join()
+        self.end_time = datetime.now()
         self._print_peak_results()
         self._save_result_file()
 
@@ -78,6 +80,11 @@ class Profiler:
 
         print(f"########## total_GPU_memory_usage_MB ##########")
         print(f"Peak: {self.df_records['total_GPU_memory_usage_MB'].max()} MB")
+        print("")
+        print("")
+
+        print(f"########## total runtime ##########")
+        print(f"{self.end_time - self.start_time}")
         print("")
         print("")
 
