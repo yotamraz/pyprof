@@ -2,16 +2,16 @@
 
 Track your CPU/Memory/CUDA utilization with an easy-to-use context wrapper
 
-## install
+## Install
 ```
-~$ git clone $$$
+~$ git clone https://github.com/yotamraz/pyprof.git
 
 ~$ cd pyprof
 
 ~$ pip install -r requirements.txt
 ```
 
-## how to use
+## use
 
 ```
 from pyprof.profiler import Profiler
@@ -20,7 +20,7 @@ with Profiler(output_file_path='./') as prof:
     funky_func()
 ```
 
-## example results
+## results
 
 #### stdout:
 
@@ -45,6 +45,6 @@ Peak: 7950.625 MB
 0:00:04.035351
 ```
 
-#### html file:
+#### html:
 
 ![example_plot.png](doc/example_plot.png)
