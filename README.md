@@ -1,6 +1,6 @@
 # pyprof
 
-Track your CPU/Memory/CUDA utilization with an easy-to-use context wrapper
+Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
 
 ## Install
 ```
