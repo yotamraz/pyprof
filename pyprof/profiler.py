@@ -13,8 +13,13 @@ from pyprof.profile_cpu import ProfileCPU
 from pyprof.profile_gpu import ProfileGPU
 from pyprof.profile_memory import ProfileRAM
 
+
 class Profiler:
-    def __init__(self, output_file_path=None, device=None, gpu=True, sleep_time=0.01):
+    """
+    A simple profiling class capable of monitoring CPU/RAM/CUDA usage
+    """
+
+    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.01):
         self.pid = os.getpid()
         self.output_file_path = output_file_path
         self.device = device
@@ -39,17 +44,24 @@ class Profiler:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.exit_event_loop = True
         self.event_thread.join()
-        self._record()
         self._print_peak_results()
         self._save_result_file()
 
     def _init_df(self):
+        """
+        init a dataframe to store all recorded data
+        :return:
+        """
         columns = ["timestamp", "CPU_utilization_%", "total_RAM_memory_usage_MB"]
         if self.gpu_profiler is not None:
             columns.extend(["GPU_utilization_%", "total_GPU_memory_usage_MB"])
         return pd.DataFrame(columns=columns)
 
     def _print_peak_results(self):
+        """
+        print peak usage for each profiler
+        :return:
+        """
 
         print(f"########## CPU_utilization_% ##########")
         print(f"Peak: {self.df_records['CPU_utilization_%'].max()} %")
@@ -72,6 +84,10 @@ class Profiler:
         print("")
 
     def _save_result_file(self):
+        """
+        save recordings as an HTML file containing plotly graphs
+        :return:
+        """
         # draw percentage and MB plots
         fig = make_subplots(rows=1, cols=2)
 
@@ -102,6 +118,10 @@ class Profiler:
             fig.write_html(self.output_file_path)
 
     def _record(self):
+        """
+        record data at a specific point in time
+        :return:
+        """
         timestamp = datetime.now()
         cpu_usage = self.cpu_profiler.get_usage()
         memory_usage = self.ram_profiler.get_usage()
@@ -118,10 +138,19 @@ class Profiler:
         ]
 
     def _event_loop(self):
+        """
+        execute record() every sleep_time seconds
+        :return:
+        """
         while not self.exit_event_loop:
             # do staff
             self._record()
             time.sleep(self.sleep_time)
 
+
     def get_recorded_data(self):
+        """
+        get recordings dataframe
+        :return:
+        """
         return self.df_records
