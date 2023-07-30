@@ -11,7 +11,7 @@ Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
 ~$ pip install -r requirements.txt
 ```
 
-## use
+## Use
 
 ```
 from pyprof.profiler import Profiler
@@ -20,7 +20,7 @@ with Profiler(output_file_path='./') as prof:
     funky_func()
 ```
 
-## results
+## Results
 
 #### stdout:
 
