@@ -1,0 +1,129 @@
+import os
+import time
+from threading import Thread
+from datetime import datetime
+
+import cv2
+import torch
+import pandas as pd
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+from pyprof.profile_cpu import ProfileCPU
+from pyprof.profile_gpu import ProfileGPU
+from pyprof.profile_memory import ProfileRAM
+
+class Profiler:
+    def __init__(self, output_file_path=None, device=None, gpu=True, sleep_time=0.01):
+        self.pid = os.getpid()
+        self.output_file_path = output_file_path
+        self.device = device
+        self.sleep_time = sleep_time
+        self.exit_event_loop = False
+
+        # init
+        self.cpu_profiler = ProfileCPU(pid=self.pid)
+        self.ram_profiler = ProfileRAM(pid=self.pid)
+        self.gpu_profiler = None
+        if gpu:
+            self.gpu_profiler = ProfileGPU(pid=self.pid, device=self.device)
+
+        # init dataframe for result
+        self.df_records = self._init_df()
+        self.event_thread = Thread(target=self._event_loop)
+
+    def __enter__(self):
+        self.event_thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.exit_event_loop = True
+        self.event_thread.join()
+        self._record()
+        self._print_peak_results()
+        self._save_result_file()
+
+    def _init_df(self):
+        columns = ["timestamp", "CPU_utilization_%", "total_RAM_memory_usage_MB"]
+        if self.gpu_profiler is not None:
+            columns.extend(["GPU_utilization_%", "total_GPU_memory_usage_MB"])
+        df = pd.DataFrame(columns=columns)
+        # df = df.set_index('timestamp')
+        return df
+
+    def _print_peak_results(self):
+
+        print(f"########## CPU_utilization_% ##########")
+        print(f"Peak: {self.df_records['CPU_utilization_%'].max()} %")
+        print("")
+        print("")
+
+        print(f"########## total_RAM_memory_usage_MB ##########")
+        print(f"Peak: {self.df_records['total_RAM_memory_usage_MB'].max()} MB")
+        print("")
+        print("")
+
+        print(f"########## GPU_utilization_% ##########")
+        print(f"Peak: {self.df_records['GPU_utilization_%'].max()} %")
+        print("")
+        print("")
+
+        print(f"########## total_GPU_memory_usage_MB ##########")
+        print(f"Peak: {self.df_records['total_GPU_memory_usage_MB'].max()} MB")
+        print("")
+        print("")
+
+    def _save_result_file(self):
+        # draw percentage and MB plots
+        fig = make_subplots(rows=1, cols=2)
+
+        fig.add_trace(
+            go.Scatter(x=self.df_records['timestamp'], y=self.df_records['CPU_utilization_%'],
+                       mode='lines', name='CPU_utilization_%'), row=1, col=1
+        )
+
+        fig.add_trace(
+            go.Scatter(x=self.df_records['timestamp'], y=self.df_records['total_RAM_memory_usage_MB'],
+                       mode='lines', name='total_RAM_memory_usage_MB'), row=1, col=2
+        )
+
+        if self.gpu_profiler is not None:
+            fig.add_trace(
+                go.Scatter(x=self.df_records['timestamp'], y=self.df_records['GPU_utilization_%'],
+                           mode='lines', name='GPU_utilization_%'), row=1, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(x=self.df_records['timestamp'], y=self.df_records['total_GPU_memory_usage_MB'],
+                           mode='lines', name='total_GPU_memory_usage_MB'), row=1, col=2
+            )
+
+        if self.output_file_path is None:
+            fig.show()
+        else:
+            fig.write_html(self.output_file_path)
+
+    def _record(self):
+        timestamp = datetime.now()
+        cpu_usage = self.cpu_profiler.get_usage()
+        memory_usage = self.ram_profiler.get_usage()
+        gpu_util, gpu_usage = 0.0, 0.0
+        if self.gpu_profiler is not None:
+            gpu_util, gpu_usage = self.gpu_profiler.get_usage()
+
+        self.df_records.loc[len(self.df_records.index), :] = [
+            timestamp,
+            cpu_usage,
+            memory_usage,
+            gpu_util,
+            gpu_usage,
+        ]
+
+    def _event_loop(self):
+        while not self.exit_event_loop:
+            # do staff
+            self._record()
+            time.sleep(self.sleep_time)
+
+    def get_recorded_data(self):
+        return self.df_records
