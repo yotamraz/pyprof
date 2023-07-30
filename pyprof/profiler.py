@@ -47,9 +47,7 @@ class Profiler:
         columns = ["timestamp", "CPU_utilization_%", "total_RAM_memory_usage_MB"]
         if self.gpu_profiler is not None:
             columns.extend(["GPU_utilization_%", "total_GPU_memory_usage_MB"])
-        df = pd.DataFrame(columns=columns)
-        # df = df.set_index('timestamp')
-        return df
+        return pd.DataFrame(columns=columns)
 
     def _print_peak_results(self):
 
