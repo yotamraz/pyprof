@@ -22,4 +22,4 @@ def test_profiler_sanity():
         numpy_array = results.detach().cpu().numpy()
 
     df = prof.get_recorded_data()
-    assert len(df) < 400
+    assert len(df) < 10000

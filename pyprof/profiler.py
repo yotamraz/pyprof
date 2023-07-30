@@ -17,7 +17,7 @@ class Profiler:
     A simple profiling class capable of monitoring CPU/RAM/CUDA usage
     """
 
-    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.01):
+    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.1):
         self.pid = os.getpid()
         self.output_file_path = output_file_path
         self.device = device
@@ -44,6 +44,7 @@ class Profiler:
         self.exit_event_loop = True
         self.event_thread.join()
         self.end_time = datetime.now()
+        self._finilize()
         self._print_peak_results()
         self._save_result_file()
 
@@ -152,6 +153,10 @@ class Profiler:
             self._record()
             time.sleep(self.sleep_time)
 
+    def _finilize(self):
+        for _ in range(10):
+            self._record()
+            time.sleep(self.sleep_time)
 
     def get_recorded_data(self):
         """
