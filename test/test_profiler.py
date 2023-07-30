@@ -19,7 +19,7 @@ def test_profiler_sanity():
         dummy_model = vgg16().to('cuda')
         tensor = torch.rand((96, 3, 224, 224), device='cuda')
         results = dummy_model(tensor)
-        # numpy_array = results.detach().cpu().numpy()
+        numpy_array = results.detach().cpu().numpy()
 
     df = prof.get_recorded_data()
     assert len(df) < 400
