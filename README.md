@@ -1,5 +1,4 @@
 # pyprof
-A simple python profiler for all mankind
 
 Track your CPU/Memory/CUDA utilization with an easy-to-use context wrapper
 
