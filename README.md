@@ -1,5 +1,7 @@
 # pyprof
-A simple profiler for all mankind 
+A simple python profiler for all mankind
+
+Track your CPU/Memory/CUDA utilization with a easy-to-use context wrapper
 
 ## install
 ```
@@ -10,7 +12,7 @@ A simple profiler for all mankind
 ~$ pip install -r requirements.txt
 ```
 
-## simple usage
+## how to use
 
 ```
 from pyprof.profiler import Profiler
