@@ -44,7 +44,7 @@ class Profiler:
         self.exit_event_loop = True
         self.event_thread.join()
         self.end_time = datetime.now()
-        self._finilize()
+        self._finalize()
         self._print_peak_results()
         self._save_result_file()
 
