@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyprof"
+version = "0.0.1"
+authors = [
+  { name="Yotam Raz", email="yotamraz2007@gmail.com" },
+]
+description = "A simple python profiler"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Linux",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yotamraz/pyprof"
+

@@ -153,7 +153,7 @@ class Profiler:
             self._record()
             time.sleep(self.sleep_time)
 
-    def _finilize(self):
+    def _finalize(self):
         for _ in range(10):
             self._record()
             time.sleep(self.sleep_time)
