@@ -3,7 +3,7 @@
 Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
 
 ## Install
-```
+```bash
 ~$ git clone https://github.com/yotamraz/pyprof.git
 
 ~$ cd pyprof
@@ -13,7 +13,7 @@ Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
 
 ## Use
 
-```
+```python
 from pyprof.profiler import Profiler
 
 with Profiler(output_file_path='./') as prof:
@@ -24,7 +24,7 @@ with Profiler(output_file_path='./') as prof:
 
 #### stdout:
 
-```
+```stdout
 ########## CPU_utilization_% ##########
 Peak: 74.425 %
 
