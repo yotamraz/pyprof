@@ -40,13 +40,14 @@ class Profiler:
         self.start_time = datetime.now()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb, export=False):
         self.exit_event_loop = True
         self.event_thread.join()
         self.end_time = datetime.now()
         self._finalize()
-        self._print_peak_results()
-        self._save_result_file()
+        if export:
+            self._print_peak_results()
+            self._save_result_file()
 
     def _init_df(self):
         """
@@ -164,3 +165,14 @@ class Profiler:
         :return:
         """
         return self.df_records
+
+    def get_peak_metrics(self):
+        """
+        get all peak metrics
+        """
+        peak_cpu_util = self.df_records['CPU_utilization_%'].max()
+        peak_memory_usage = self.df_records['total_RAM_memory_usage_MB'].max()
+        peak_gpu_util = self.df_records['GPU_utilization_%'].max()
+        peak_gpu_memory_usage = self.df_records['total_GPU_memory_usage_MB'].max()
+
+        return peak_cpu_util, peak_memory_usage, peak_gpu_util, peak_gpu_memory_usage
