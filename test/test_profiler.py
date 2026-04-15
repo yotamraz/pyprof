@@ -1,25 +1,61 @@
-import pytest
+from __future__ import annotations
 
-import cv2
-import torch
-from torchvision.models import vgg16
+import time
 
 from pyprof.profiler import Profiler
 
-def test_profiler_sanity():
 
-    with Profiler(output_file_path='/home/yotam/Desktop/output.html') as prof:
-        image = cv2.imread('/home/yotam/Pictures/kelly-sikkema-9yofm7L1AE8-unsplash.jpg')
-        image_opposite = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image_resized= cv2.resize(image_opposite, dsize=(1024,1024))
-        edge_map = cv2.Canny(image_opposite, 10, 200)
-        sift_obj = cv2.SIFT_create()
-        kps = sift_obj.detect(image_opposite)
+def test_profiler_disables_gpu_when_backend_is_unavailable(monkeypatch) -> None:
+    class FailingGPU:
+        def __init__(self, pid: int, device: int) -> None:
+            _ = pid
+            _ = device
+            raise RuntimeError("simulated missing backend")
 
-        dummy_model = vgg16().to('cuda')
-        tensor = torch.rand((96, 3, 224, 224), device='cuda')
-        results = dummy_model(tensor)
-        numpy_array = results.detach().cpu().numpy()
+        @classmethod
+        def get_unavailable_reason(cls) -> str:
+            return "simulated missing backend"
 
-    df = prof.get_recorded_data()
-    assert len(df) < 10000
+    monkeypatch.setattr("pyprof.profiler.ProfileGPU", FailingGPU)
+
+    with Profiler(gpu=True, sleep_time=0.001) as profiler:
+        time.sleep(0.01)
+
+    data = profiler.get_recorded_data()
+    peak_cpu, peak_ram, peak_gpu, peak_gpu_mem = profiler.get_peak_metrics()
+    assert len(data) > 0
+    assert "GPU_utilization_%" not in data.columns
+    assert peak_cpu >= 0
+    assert peak_ram >= 0
+    assert peak_gpu is None
+    assert peak_gpu_mem is None
+
+
+def test_profiler_records_gpu_metrics_when_backend_is_available(monkeypatch) -> None:
+    class DummyGPU:
+        def __init__(self, pid: int, device: int) -> None:
+            _ = pid
+            _ = device
+            self.backend_name = "dummy-gpu"
+
+        @classmethod
+        def get_unavailable_reason(cls) -> None:
+            return None
+
+        def get_usage(self) -> tuple[float, float]:
+            return 12.5, 256.0
+
+    monkeypatch.setattr("pyprof.profiler.ProfileGPU", DummyGPU)
+
+    with Profiler(gpu=True, sleep_time=0.001) as profiler:
+        time.sleep(0.01)
+
+    data = profiler.get_recorded_data()
+    peak_cpu, peak_ram, peak_gpu, peak_gpu_mem = profiler.get_peak_metrics()
+    assert len(data) > 0
+    assert "GPU_utilization_%" in data.columns
+    assert "total_GPU_memory_usage_MB" in data.columns
+    assert peak_cpu >= 0
+    assert peak_ram >= 0
+    assert peak_gpu is not None and peak_gpu >= 12.5
+    assert peak_gpu_mem is not None and peak_gpu_mem >= 256.0
