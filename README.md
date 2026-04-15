@@ -2,6 +2,13 @@
 
 Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
 
+## Platform support
+
+- CPU and RAM profiling: Linux, macOS (including Apple Silicon), and Windows.
+- GPU profiling: NVIDIA GPUs through NVML (`nvidia-ml-py3`).
+- On machines without NVIDIA/NVML (for example many AMD or Apple Silicon setups),
+  profiling still works for CPU/RAM and GPU metrics are automatically disabled.
+
 ## Install
 ```bash
 ~$ git clone https://github.com/yotamraz/pyprof.git
