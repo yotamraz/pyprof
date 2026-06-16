@@ -8,8 +8,8 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 from pyprof.profile_cpu import ProfileCPU
-from pyprof.profile_gpu import ProfileGPU
 from pyprof.profile_memory import ProfileRAM
+from pyprof.backends import detect_backend, NVIDIABackend, ROCmBackend, AppleSiliconBackend, GPUBackend
 
 
 class Profiler:
@@ -17,7 +17,7 @@ class Profiler:
     A simple profiling class capable of monitoring CPU/RAM/CUDA usage
     """
 
-    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.1):
+    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.1, backend="auto"):
         self.pid = os.getpid()
         self.output_file_path = output_file_path
         self.device = device
@@ -29,7 +29,21 @@ class Profiler:
         self.ram_profiler = ProfileRAM(pid=self.pid)
         self.gpu_profiler = None
         if gpu:
-            self.gpu_profiler = ProfileGPU(pid=self.pid, device=self.device)
+            if isinstance(backend, GPUBackend):
+                # Direct instance injection (for testing or manual use)
+                self.gpu_profiler = backend
+            elif backend == "auto":
+                self.gpu_profiler = detect_backend(device)
+            elif backend in ("nvidia", "rocm", "apple"):
+                backend_map = {"nvidia": NVIDIABackend, "rocm": ROCmBackend, "apple": AppleSiliconBackend}
+                cls = backend_map[backend]
+                if not cls.is_available():
+                    raise RuntimeError(f"Requested backend '{backend}' is not available on this system")
+                self.gpu_profiler = cls(device=device)
+            elif backend is None:
+                pass  # no GPU monitoring
+            else:
+                raise ValueError(f"Unknown backend: {backend!r}. Use 'auto', 'nvidia', 'rocm', 'apple', or a GPUBackend instance.")
 
         # init dataframe for result
         self.df_records = self._init_df()
@@ -75,15 +89,16 @@ class Profiler:
         print("")
         print("")
 
-        print(f"########## GPU_utilization_% ##########")
-        print(f"Peak: {self.df_records['GPU_utilization_%'].max()} %")
-        print("")
-        print("")
+        if self.gpu_profiler is not None:
+            print(f"########## GPU_utilization_% ##########")
+            print(f"Peak: {self.df_records['GPU_utilization_%'].max()} %")
+            print("")
+            print("")
 
-        print(f"########## total_GPU_memory_usage_MB ##########")
-        print(f"Peak: {self.df_records['total_GPU_memory_usage_MB'].max()} MB")
-        print("")
-        print("")
+            print(f"########## total_GPU_memory_usage_MB ##########")
+            print(f"Peak: {self.df_records['total_GPU_memory_usage_MB'].max()} MB")
+            print("")
+            print("")
 
         print(f"########## total runtime ##########")
         print(f"{self.end_time - self.start_time}")
@@ -132,17 +147,13 @@ class Profiler:
         timestamp = datetime.now()
         cpu_usage = self.cpu_profiler.get_usage()
         memory_usage = self.ram_profiler.get_usage()
-        gpu_util, gpu_usage = 0.0, 0.0
+
+        row = [timestamp, cpu_usage, memory_usage]
         if self.gpu_profiler is not None:
             gpu_util, gpu_usage = self.gpu_profiler.get_usage()
+            row.extend([gpu_util, gpu_usage])
 
-        self.df_records.loc[len(self.df_records.index), :] = [
-            timestamp,
-            cpu_usage,
-            memory_usage,
-            gpu_util,
-            gpu_usage,
-        ]
+        self.df_records.loc[len(self.df_records.index), :] = row
 
     def _event_loop(self):
         """
@@ -172,7 +183,10 @@ class Profiler:
         """
         peak_cpu_util = self.df_records['CPU_utilization_%'].max()
         peak_memory_usage = self.df_records['total_RAM_memory_usage_MB'].max()
-        peak_gpu_util = self.df_records['GPU_utilization_%'].max()
-        peak_gpu_memory_usage = self.df_records['total_GPU_memory_usage_MB'].max()
-
+        if self.gpu_profiler is not None:
+            peak_gpu_util = self.df_records['GPU_utilization_%'].max()
+            peak_gpu_memory_usage = self.df_records['total_GPU_memory_usage_MB'].max()
+        else:
+            peak_gpu_util = None
+            peak_gpu_memory_usage = None
         return peak_cpu_util, peak_memory_usage, peak_gpu_util, peak_gpu_memory_usage
