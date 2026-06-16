@@ -10,8 +10,22 @@ authors = [
 ]
 description = "A simple python profiler"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
+dependencies = [
+    "psutil>=6.0",
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "plotly>=5.18",
+]
+
+[project.optional-dependencies]
+nvidia = ["nvidia-ml-py3>=12.0"]
+rocm = ["pyrsmi>=1.0"]
+apple = ["apple-smi>=0.1"]
+dev = ["pytest>=8.0", "pytest-mock>=3.12"]
 
 [project.urls]
 "Homepage" = "https://github.com/yotamraz/pyprof"
 
+[tool.pytest.ini_options]
+testpaths = ["test"]
