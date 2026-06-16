@@ -6,7 +6,7 @@ from pyprof.backends.apple_silicon import AppleSiliconBackend
 _BACKEND_PRIORITY = [NVIDIABackend, ROCmBackend, AppleSiliconBackend]
 
 
-def detect_backend(device: int = 0):
+def detect_backend(device: int = 0) -> GPUBackend | None:
     """Probe each GPU backend in priority order and return the first available one.
 
     Returns an instantiated GPUBackend, or None if no supported GPU is found.

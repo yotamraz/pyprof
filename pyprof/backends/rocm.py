@@ -19,11 +19,11 @@ class ROCmBackend(GPUBackend):
         super().__init__(device)
         self._driver.smi_initialize()
 
-    def get_usage(self) -> tuple:
+    def get_usage(self) -> tuple[float, float]:
         """Return (util_percent, mem_used_MB) for the configured ROCm device."""
         try:
             util_percent = self._driver.smi_get_device_utilization(self.device)
-            mem_used_bytes = self._driver.smi_get_device_vram_usage(self.device)
+            mem_used_bytes, _ = self._driver.smi_get_device_vram_usage(self.device)
         except AttributeError as exc:
             raise RuntimeError(
                 f"ROCm SMI API does not expose expected methods "

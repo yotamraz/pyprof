@@ -20,7 +20,7 @@ class NVIDIABackend(GPUBackend):
         self._driver.nvmlInit()
         self._handle = self._driver.nvmlDeviceGetHandleByIndex(device)
 
-    def get_usage(self) -> tuple:
+    def get_usage(self) -> tuple[float, float]:
         """Return (util_percent, mem_used_MB) for the configured device."""
         util = self._driver.nvmlDeviceGetUtilizationRates(self._handle)
         memory_info = self._driver.nvmlDeviceGetMemoryInfo(self._handle)

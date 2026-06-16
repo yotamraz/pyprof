@@ -17,7 +17,7 @@ class Profiler:
     A simple profiling class capable of monitoring CPU/RAM/CUDA usage
     """
 
-    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.1, backend="auto"):
+    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.1, backend: "str | GPUBackend" = "auto"):
         self.pid = os.getpid()
         self.output_file_path = output_file_path
         self.device = device

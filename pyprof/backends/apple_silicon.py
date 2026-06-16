@@ -20,7 +20,7 @@ class AppleSiliconBackend(GPUBackend):
     def __init__(self, device: int = 0):
         super().__init__(device)
 
-    def get_usage(self) -> tuple:
+    def get_usage(self) -> tuple[float, float]:
         """Return (util_percent, mem_MB) for the Apple Silicon GPU."""
         try:
             util_percent = self._driver.get_gpu_utilization()

@@ -173,8 +173,8 @@ class TestROCmBackendUnit:
         mock_rocml.smi_initialize.return_value = None
         mock_rocml.smi_shutdown.return_value = None
         mock_rocml.smi_get_device_utilization.return_value = 55
-        # smi_get_device_vram_usage returns bytes used (single int per rocm.py)
-        mock_rocml.smi_get_device_vram_usage.return_value = 2048 * 1024 * 1024  # 2 GiB
+        # smi_get_device_vram_usage returns (bytes_used, bytes_total) tuple per pyrsmi spec
+        mock_rocml.smi_get_device_vram_usage.return_value = (2048 * 1024 * 1024, 8192 * 1024 * 1024)
 
         mocker.patch("pyprof.backends.rocm.rocml", mock_rocml, create=True)
         ROCmBackend._driver = mock_rocml
@@ -194,7 +194,8 @@ class TestROCmBackendUnit:
         mock_rocml = mocker.MagicMock()
         mock_rocml.smi_initialize.return_value = None
         mock_rocml.smi_get_device_utilization.return_value = 10
-        mock_rocml.smi_get_device_vram_usage.return_value = 1024 * 1024 * 1024  # 1 GiB
+        # smi_get_device_vram_usage returns (bytes_used, bytes_total) tuple per pyrsmi spec
+        mock_rocml.smi_get_device_vram_usage.return_value = (1024 * 1024 * 1024, 8192 * 1024 * 1024)
 
         mocker.patch("pyprof.backends.rocm.rocml", mock_rocml, create=True)
         ROCmBackend._driver = mock_rocml
@@ -411,6 +412,23 @@ class TestProfilerIntegration:
     def test_profiler_backend_none_skips_gpu(self):
         """backend=None with gpu=True must also skip GPU monitoring."""
         with Profiler(gpu=True, backend=None, sleep_time=0.05) as p:
+            time.sleep(0.1)
+
+        assert p.gpu_profiler is None
+
+    def test_profiler_gpu_true_backend_auto_no_hardware(self, mocker):
+        """gpu=True + backend='auto' must gracefully yield gpu_profiler=None when no GPU is available."""
+        mocker.patch("pyprof.profiler.detect_backend", return_value=None)
+        with Profiler(gpu=True, backend="auto", sleep_time=0.05) as p:
+            time.sleep(0.1)
+
+        assert p.gpu_profiler is None
+        df = p.get_recorded_data()
+        assert "GPU_utilization_%" not in df.columns
+
+    def test_profiler_gpu_false_backend_none(self):
+        """gpu=False + backend=None must skip GPU monitoring (no gpu_profiler)."""
+        with Profiler(gpu=False, backend=None, sleep_time=0.05) as p:
             time.sleep(0.1)
 
         assert p.gpu_profiler is None
