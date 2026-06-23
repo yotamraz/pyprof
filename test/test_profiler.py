@@ -389,6 +389,41 @@ class TestProfileGPUMPSMocked:
         assert util == pytest.approx(0.0)  # gpu_active_ratio=0.0 must win, not active_ratio=0.5
         assert mem == pytest.approx(512.0)
 
+    def _run_mps_with_plist(self, plist_dict):
+        import plistlib
+        import pyprof.profile_gpu_mps as mod
+        fake_plist_bytes = plistlib.dumps(plist_dict)
+        with patch('shutil.which', return_value='/usr/bin/powermetrics'), \
+             patch('subprocess.run') as mock_run, \
+             patch('psutil.Process') as mock_psutil:
+            mock_run.side_effect = [
+                MagicMock(returncode=0),
+                MagicMock(returncode=0, stdout=fake_plist_bytes),
+            ]
+            mock_proc = MagicMock()
+            mock_proc.memory_info.return_value.rss = 256 * 1024**2
+            mock_psutil.return_value = mock_proc
+            mps = mod.ProfileGPUMPS(device=0)
+            return mps.get_usage()
+
+    def test_get_usage_active_ratio_fallback(self):
+        """active_ratio key is used when gpu_active_ratio is absent."""
+        util, mem = self._run_mps_with_plist({"GPU": [{"active_ratio": 0.55}]})
+        assert util == pytest.approx(55.0)
+        assert mem == pytest.approx(256.0)
+
+    def test_get_usage_gpu_utilization_fallback(self):
+        """gpu_utilization key is used when primary keys are absent."""
+        util, mem = self._run_mps_with_plist({"GPU": [{"gpu_utilization": 0.75}]})
+        assert util == pytest.approx(75.0)
+        assert mem == pytest.approx(256.0)
+
+    def test_get_usage_no_known_key_returns_zero(self):
+        """When no known key is present in plist entry, utilization is 0.0."""
+        util, mem = self._run_mps_with_plist({"GPU": [{"unknown_key": 0.9}]})
+        assert util == pytest.approx(0.0)
+        assert mem == pytest.approx(256.0)
+
 
 class TestProfileGPUShimMocked:
     """Mock-based tests for the backward-compat profile_gpu.py shim."""
