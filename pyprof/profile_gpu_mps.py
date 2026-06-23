@@ -63,12 +63,12 @@ class ProfileGPUMPS(ProfileGPUBase):
                 idx = min(self._device, len(gpu_list) - 1)
                 gpu_entry = gpu_list[idx]
                 # Key may vary across macOS versions; try common names
-                util = (
-                    gpu_entry.get("gpu_active_ratio")
-                    or gpu_entry.get("active_ratio")
-                    or gpu_entry.get("gpu_utilization")
-                    or 0.0
-                )
+                util = 0.0
+                for key in ("gpu_active_ratio", "active_ratio", "gpu_utilization"):
+                    val = gpu_entry.get(key)
+                    if val is not None:
+                        util = val
+                        break
                 return float(util) * 100.0, memory_mb
         except Exception:
             pass

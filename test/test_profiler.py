@@ -349,6 +349,31 @@ class TestProfileGPUMPSMocked:
         assert util == pytest.approx(42.0)  # 0.42 * 100
         assert mem == pytest.approx(1024.0)
 
+    def test_get_usage_zero_utilization_not_overridden(self):
+        """gpu_active_ratio=0.0 must not fall through to alternative keys via or-chain."""
+        import plistlib
+        import pyprof.profile_gpu_mps as mod
+
+        fake_plist = {"GPU": [{"gpu_active_ratio": 0.0, "active_ratio": 0.5}]}
+        fake_plist_bytes = plistlib.dumps(fake_plist)
+
+        with patch('shutil.which', return_value='/usr/bin/powermetrics'), \
+             patch('subprocess.run') as mock_run, \
+             patch('psutil.Process') as mock_psutil:
+            mock_run.side_effect = [
+                MagicMock(returncode=0),
+                MagicMock(returncode=0, stdout=fake_plist_bytes),
+            ]
+            mock_proc = MagicMock()
+            mock_proc.memory_info.return_value.rss = 512 * 1024**2
+            mock_psutil.return_value = mock_proc
+
+            mps = mod.ProfileGPUMPS(device=0)
+            util, mem = mps.get_usage()
+
+        assert util == pytest.approx(0.0)  # gpu_active_ratio=0.0 must win, not active_ratio=0.5
+        assert mem == pytest.approx(512.0)
+
 
 # ─── Hardware integration tests (skipped by default) ────────────────────────
 
