@@ -5,7 +5,14 @@ from pyprof.profile_gpu_base import ProfileGPUBase
 
 class ProfileGPUROCm(ProfileGPUBase):
     def __init__(self, device=0):
-        amdsmi.amdsmi_init()
+        try:
+            amdsmi.amdsmi_init()
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to initialise amdsmi. ROCm >= 5.4 is required "
+                "(function names changed from rsmi_ to amdsmi_ in 5.4). "
+                f"Original error: {exc}"
+            ) from exc
         handles = amdsmi.amdsmi_get_processor_handles()
         if device >= len(handles):
             raise RuntimeError(
