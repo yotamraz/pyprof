@@ -288,6 +288,7 @@ class TestProfileGPUCUDAIntegration:
     """Integration tests requiring a real NVIDIA GPU."""
 
     def test_get_usage_returns_nonnegative(self):
+        pytest.importorskip("nvidia_smi", reason="nvidia-ml-py3 not installed")
         from pyprof.profile_gpu_cuda import ProfileGPUCUDA
         cuda = ProfileGPUCUDA(device=0)
         util, mem = cuda.get_usage()
@@ -300,6 +301,7 @@ class TestProfileGPUROCmIntegration:
     """Integration tests requiring a real AMD ROCm GPU."""
 
     def test_get_usage_returns_nonnegative(self):
+        pytest.importorskip("amdsmi", reason="amdsmi not installed")
         from pyprof.profile_gpu_rocm import ProfileGPUROCm
         rocm = ProfileGPUROCm(device=0)
         util, mem = rocm.get_usage()
@@ -312,6 +314,10 @@ class TestProfileGPUMPSIntegration:
     """Integration tests requiring Apple Silicon."""
 
     def test_get_usage_returns_nonnegative(self):
+        import sys
+        import shutil
+        if sys.platform != 'darwin' or not shutil.which('powermetrics'):
+            pytest.skip("Not on Apple Silicon or powermetrics not found")
         from pyprof.profile_gpu_mps import ProfileGPUMPS
         mps = ProfileGPUMPS(device=0)
         util, mem = mps.get_usage()
