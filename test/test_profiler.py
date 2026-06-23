@@ -226,7 +226,9 @@ class TestProfilerWithMockedGPU:
         from pyprof.profiler import Profiler
         output_file = tmp_path / "output.html"
 
-        with patch('pyprof.profiler.create_gpu_profiler', return_value=None) as mock_factory:
+        mock_gpu = MagicMock(spec=ProfileGPUBase)
+        mock_gpu.get_usage.return_value = (0.0, 0.0)
+        with patch('pyprof.profiler.create_gpu_profiler', return_value=mock_gpu) as mock_factory:
             with Profiler(output_file_path=str(output_file), gpu=True, backend='cuda', sleep_time=0.05) as prof:
                 pass
 
@@ -237,7 +239,7 @@ class TestProfilerWithMockedGPU:
         from pyprof.profiler import Profiler
         output_file = tmp_path / "output.html"
 
-        with patch('pyprof.profiler.create_gpu_profiler', return_value=None) as mock_factory:
+        with patch('pyprof.profiler.create_gpu_profiler', return_value=ProfileGPUNull(warn=False)) as mock_factory:
             with Profiler(output_file_path=str(output_file), gpu=False, sleep_time=0.05) as prof:
                 pass
 
