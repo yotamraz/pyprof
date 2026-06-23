@@ -20,8 +20,3 @@ class ProfileGPUROCm(ProfileGPUBase):
         memory_mb = float(vram.get("vram_used", 0))
         return util, memory_mb
 
-    def __del__(self):
-        try:
-            amdsmi.amdsmi_shut_down()
-        except Exception:
-            pass
