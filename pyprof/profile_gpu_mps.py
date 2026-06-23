@@ -47,7 +47,7 @@ class ProfileGPUMPS(ProfileGPUBase):
         try:
             result = subprocess.run(
                 [
-                    'sudo', 'powermetrics',
+                    'sudo', '-n', '/usr/bin/powermetrics',
                     '-f', 'plist',
                     '-n', '1',
                     '--samplers', 'gpu_power',
