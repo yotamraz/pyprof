@@ -24,20 +24,23 @@ def create_gpu_profiler(backend: str = 'auto', device: int = 0):
     if backend == 'none':
         return ProfileGPUNull(warn=False)
 
-    if backend == 'cuda' or (backend == 'auto' and importlib.util.find_spec('nvidia_smi') is not None):
-        if backend == 'cuda' and importlib.util.find_spec('nvidia_smi') is None:
+    cuda_available = importlib.util.find_spec('nvidia_smi') is not None
+    if backend == 'cuda' or (backend == 'auto' and cuda_available):
+        if backend == 'cuda' and not cuda_available:
             raise RuntimeError("Backend 'cuda' requested but nvidia-ml-py3 is not installed.")
         from pyprof.profile_gpu_cuda import ProfileGPUCUDA
         return ProfileGPUCUDA(device=device)
 
-    if backend == 'rocm' or (backend == 'auto' and importlib.util.find_spec('amdsmi') is not None):
-        if backend == 'rocm' and importlib.util.find_spec('amdsmi') is None:
+    rocm_available = importlib.util.find_spec('amdsmi') is not None
+    if backend == 'rocm' or (backend == 'auto' and rocm_available):
+        if backend == 'rocm' and not rocm_available:
             raise RuntimeError("Backend 'rocm' requested but amdsmi is not installed.")
         from pyprof.profile_gpu_rocm import ProfileGPUROCm
         return ProfileGPUROCm(device=device)
 
-    if backend == 'mps' or (backend == 'auto' and sys.platform == 'darwin' and shutil.which('powermetrics')):
-        if backend == 'mps' and not (sys.platform == 'darwin' and shutil.which('powermetrics')):
+    mps_available = bool(sys.platform == 'darwin' and shutil.which('powermetrics'))
+    if backend == 'mps' or (backend == 'auto' and mps_available):
+        if backend == 'mps' and not mps_available:
             raise RuntimeError("Backend 'mps' requested but not on macOS or powermetrics not found.")
         from pyprof.profile_gpu_mps import ProfileGPUMPS
         return ProfileGPUMPS(device=device)
