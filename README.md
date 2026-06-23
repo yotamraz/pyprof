@@ -1,14 +1,20 @@
 # pyprof
 
-Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
+Track your CPU/RAM/GPU utilization with an easy-to-use context wrapper. Supports CUDA, AMD ROCm, and Apple Silicon (MPS) GPU backends.
 
 ## Install
 ```bash
-~$ git clone https://github.com/yotamraz/pyprof.git
+# Base install (CPU + RAM profiling only)
+pip install pyprof
 
-~$ cd pyprof
+# With NVIDIA CUDA GPU support
+pip install "pyprof[cuda]"
 
-~$ pip install -r requirements.txt
+# With AMD ROCm GPU support (requires ROCm >= 5.4 system-wide)
+pip install "pyprof[rocm]"
+
+# Development (adds pytest)
+pip install "pyprof[dev]"
 ```
 
 ## Use
@@ -16,7 +22,12 @@ Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
 ```python
 from pyprof.profiler import Profiler
 
-with Profiler(output_file_path='./') as prof:
+# Auto-detect GPU backend (CUDA → ROCm → MPS → none)
+with Profiler(output_file_path='./output.html') as prof:
+    funky_func()
+
+# Explicit backend selection
+with Profiler(output_file_path='./output.html', backend='cuda') as prof:
     funky_func()
 ```
 
