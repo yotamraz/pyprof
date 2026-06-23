@@ -53,7 +53,7 @@ class Profiler:
         :return:
         """
         columns = ["timestamp", "CPU_utilization_%", "total_RAM_memory_usage_MB"]
-        if self.gpu_profiler is not None:
+        if self.gpu_profiler:
             columns.extend(["GPU_utilization_%", "total_GPU_memory_usage_MB"])
         return pd.DataFrame(columns=columns)
 
@@ -73,7 +73,7 @@ class Profiler:
         print("")
         print("")
 
-        if self.gpu_profiler is not None:
+        if self.gpu_profiler:
             print(f"########## GPU_utilization_% ##########")
             print(f"Peak: {self.df_records['GPU_utilization_%'].max()} %")
             print("")
@@ -107,7 +107,7 @@ class Profiler:
                        mode='lines', name='total_RAM_memory_usage_MB'), row=1, col=2
         )
 
-        if self.gpu_profiler is not None:
+        if self.gpu_profiler:
             fig.add_trace(
                 go.Scatter(x=self.df_records['timestamp'], y=self.df_records['GPU_utilization_%'],
                            mode='lines', name='GPU_utilization_%'), row=1, col=1
@@ -131,7 +131,7 @@ class Profiler:
         timestamp = datetime.now()
         cpu_usage = self.cpu_profiler.get_usage()
         memory_usage = self.ram_profiler.get_usage()
-        if self.gpu_profiler is not None:
+        if self.gpu_profiler:
             gpu_util, gpu_usage = self.gpu_profiler.get_usage()
             self.df_records.loc[len(self.df_records.index), :] = [
                 timestamp,
@@ -175,7 +175,7 @@ class Profiler:
         """
         peak_cpu_util = self.df_records['CPU_utilization_%'].max()
         peak_memory_usage = self.df_records['total_RAM_memory_usage_MB'].max()
-        if self.gpu_profiler is not None:
+        if self.gpu_profiler:
             peak_gpu_util = self.df_records['GPU_utilization_%'].max()
             peak_gpu_memory_usage = self.df_records['total_GPU_memory_usage_MB'].max()
         else:

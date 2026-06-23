@@ -1,7 +1,6 @@
 import importlib.util
 import shutil
 import sys
-import warnings
 
 
 def create_gpu_profiler(backend: str = 'auto', device: int = 0):
@@ -17,10 +16,13 @@ def create_gpu_profiler(backend: str = 'auto', device: int = 0):
 
     Returns
     -------
-    ProfileGPUBase subclass instance, or None when GPU profiling is disabled.
+    ProfileGPUBase subclass instance. Returns ProfileGPUNull (falsy) when no
+    GPU is available or backend='none'. Never returns None.
     """
+    from pyprof.profile_gpu_null import ProfileGPUNull
+
     if backend == 'none':
-        return None
+        return ProfileGPUNull(warn=False)
 
     if backend == 'cuda' or (backend == 'auto' and importlib.util.find_spec('nvidia_smi') is not None):
         if backend == 'cuda' and importlib.util.find_spec('nvidia_smi') is None:
@@ -41,8 +43,7 @@ def create_gpu_profiler(backend: str = 'auto', device: int = 0):
         return ProfileGPUMPS(device=device)
 
     if backend == 'auto':
-        warnings.warn("No GPU backend detected; GPU profiling disabled.", UserWarning, stacklevel=2)
-        return None
+        return ProfileGPUNull(warn=True)
 
     raise RuntimeError(
         f"Unknown backend: '{backend}'. Valid values: 'auto', 'cuda', 'rocm', 'mps', 'none'."

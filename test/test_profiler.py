@@ -38,37 +38,80 @@ class TestProfileGPUNull:
 # ─── create_gpu_profiler ─────────────────────────────────────────────────────
 
 class TestCreateGpuProfiler:
-    def test_backend_none_returns_none(self):
+    def test_backend_none_returns_null(self):
+        """backend='none' returns a falsy ProfileGPUNull without a UserWarning."""
         from pyprof.gpu_factory import create_gpu_profiler
-        result = create_gpu_profiler(backend='none')
-        assert result is None
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = create_gpu_profiler(backend='none')
+        assert isinstance(result, ProfileGPUNull)
+        assert not result
+        assert not any(issubclass(x.category, UserWarning) for x in w)
 
-    def test_auto_no_gpu_returns_none(self):
-        """When no GPU library is available and not darwin, factory returns None."""
+    def test_auto_no_gpu_returns_null_with_warning(self):
+        """When no GPU library is available and not darwin, factory returns ProfileGPUNull with warning."""
         from pyprof.gpu_factory import create_gpu_profiler
         with patch('importlib.util.find_spec', return_value=None), \
              patch('sys.platform', 'linux'), \
              patch('shutil.which', return_value=None):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
                 result = create_gpu_profiler(backend='auto')
-        assert result is None
+        assert isinstance(result, ProfileGPUNull)
+        assert not result
+        assert any(issubclass(x.category, UserWarning) for x in w)
 
     def test_auto_cuda_available(self):
-        """When nvidia_smi is importable, factory returns ProfileGPUCUDA."""
+        """When nvidia_smi is detectable via find_spec, factory auto-detects CUDA and returns ProfileGPUCUDA."""
         from pyprof.gpu_factory import create_gpu_profiler
-        mock_spec = MagicMock()
-        mock_cuda = MagicMock()
-        mock_cuda.device = 0
-        mock_cuda.get_usage.return_value = (50.0, 2048.0)
+        mock_nvidia = MagicMock()
+        mock_handler = MagicMock()
+        mock_nvidia.nvmlDeviceGetHandleByIndex.return_value = mock_handler
+        mock_nvidia.nvmlDeviceGetUtilizationRates.return_value = MagicMock(gpu=50.0)
+        mock_nvidia.nvmlDeviceGetMemoryInfo.return_value = MagicMock(used=2048 * 1024**2)
 
-        with patch('importlib.util.find_spec', return_value=mock_spec), \
-             patch('pyprof.gpu_factory.ProfileGPUCUDA', return_value=mock_cuda, create=True):
-            # We need to patch the import inside the factory
-            pass
-        # Just test backend='none' works properly since CUDA may not be installed
-        result = create_gpu_profiler(backend='none')
-        assert result is None
+        with patch.dict('sys.modules', {'nvidia_smi': mock_nvidia}), \
+             patch('importlib.util.find_spec', return_value=MagicMock()):
+            from importlib import reload
+            import pyprof.profile_gpu_cuda as cuda_mod
+            reload(cuda_mod)
+            result = create_gpu_profiler(backend='auto')
+            assert type(result).__name__ == 'ProfileGPUCUDA'
+
+    def test_auto_rocm_available(self):
+        """When amdsmi is in sys.modules (but nvidia_smi is not), factory returns ProfileGPUROCm."""
+        from pyprof.gpu_factory import create_gpu_profiler
+        mock_amdsmi = MagicMock()
+        mock_handle = MagicMock()
+        mock_amdsmi.amdsmi_get_processor_handles.return_value = [mock_handle]
+        mock_amdsmi.amdsmi_get_gpu_activity.return_value = {"gfx_activity": 30.0}
+        mock_amdsmi.amdsmi_get_gpu_vram_usage.return_value = {"vram_used": 1024.0}
+
+        def fake_find_spec(name):
+            return None if name == 'nvidia_smi' else MagicMock()
+
+        with patch.dict('sys.modules', {'amdsmi': mock_amdsmi}), \
+             patch('importlib.util.find_spec', side_effect=fake_find_spec):
+            from importlib import reload
+            import pyprof.profile_gpu_rocm as rocm_mod
+            reload(rocm_mod)
+            result = create_gpu_profiler(backend='auto')
+            assert type(result).__name__ == 'ProfileGPUROCm'
+
+    def test_auto_mps_available(self):
+        """On darwin with powermetrics available, factory auto-detects MPS and returns ProfileGPUMPS."""
+        from pyprof.gpu_factory import create_gpu_profiler
+
+        with patch('importlib.util.find_spec', return_value=None), \
+             patch('sys.platform', 'darwin'), \
+             patch('shutil.which', return_value='/usr/bin/powermetrics'), \
+             patch('subprocess.run', return_value=MagicMock(returncode=1)):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                result = create_gpu_profiler(backend='auto')
+
+        from pyprof.profile_gpu_mps import ProfileGPUMPS
+        assert isinstance(result, ProfileGPUMPS)
 
     def test_explicit_cuda_unavailable_raises(self):
         """Explicit 'cuda' when nvidia_smi not found raises RuntimeError."""
@@ -279,6 +322,32 @@ class TestProfileGPUMPSMocked:
 
         assert util == 0.0
         assert mem == pytest.approx(512.0)
+
+    def test_get_usage_with_sudo_parses_plist(self):
+        """ProfileGPUMPS parses powermetrics plist and returns utilization when sudo is available."""
+        import plistlib
+        import pyprof.profile_gpu_mps as mod
+
+        fake_plist = {"GPU": [{"gpu_active_ratio": 0.42}]}
+        fake_plist_bytes = plistlib.dumps(fake_plist)
+
+        with patch('shutil.which', return_value='/usr/bin/powermetrics'), \
+             patch('subprocess.run') as mock_run, \
+             patch('psutil.Process') as mock_psutil:
+            # Init: sudo -n check passes; get_usage: powermetrics returns plist bytes
+            mock_run.side_effect = [
+                MagicMock(returncode=0),
+                MagicMock(returncode=0, stdout=fake_plist_bytes),
+            ]
+            mock_proc = MagicMock()
+            mock_proc.memory_info.return_value.rss = 1024 * 1024**2
+            mock_psutil.return_value = mock_proc
+
+            mps = mod.ProfileGPUMPS(device=0)
+            util, mem = mps.get_usage()
+
+        assert util == pytest.approx(42.0)  # 0.42 * 100
+        assert mem == pytest.approx(1024.0)
 
 
 # ─── Hardware integration tests (skipped by default) ────────────────────────

@@ -11,4 +11,9 @@ nvidia_smi.nvmlInit()
 
 from pyprof.profile_gpu_cuda import ProfileGPUCUDA
 
-ProfileGPU = ProfileGPUCUDA
+
+class ProfileGPU(ProfileGPUCUDA):
+    """Backward-compat wrapper preserving the original (pid, device) constructor signature."""
+
+    def __init__(self, pid=None, device=0):
+        super().__init__(device=device)
