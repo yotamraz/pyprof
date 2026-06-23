@@ -17,3 +17,5 @@ class ProfileGPU(ProfileGPUCUDA):
 
     def __init__(self, pid=None, device=0):
         super().__init__(device=device)
+        self.init_util = nvidia_smi.nvmlDeviceGetUtilizationRates(self.gpu_handler).gpu / 1.0
+        self.init_memory_usage = nvidia_smi.nvmlDeviceGetMemoryInfo(self.gpu_handler).used / 1024**2
