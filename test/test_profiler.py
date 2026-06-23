@@ -295,6 +295,19 @@ class TestProfileGPUROCmMocked:
         assert util == 55.0
         assert mem == 1024.0
 
+    def test_device_out_of_range_raises(self):
+        """ProfileGPUROCm raises RuntimeError when device index >= number of handles."""
+        mock_amdsmi = MagicMock()
+        mock_handle = MagicMock()
+        mock_amdsmi.amdsmi_get_processor_handles.return_value = [mock_handle]
+
+        with patch.dict('sys.modules', {'amdsmi': mock_amdsmi}):
+            from importlib import reload
+            import pyprof.profile_gpu_rocm as mod
+            reload(mod)
+            with pytest.raises(RuntimeError, match="ROCm device 1 not found"):
+                mod.ProfileGPUROCm(device=1)
+
 
 class TestProfileGPUMPSMocked:
     """Test ProfileGPUMPS with mocked subprocess."""
