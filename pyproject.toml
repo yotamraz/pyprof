@@ -4,14 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyprof"
-version = "0.0.3"
+version = "0.1.0"
 authors = [
   { name="Yotam Raz", email="yotamraz2007@gmail.com" },
 ]
-description = "A simple python profiler"
+description = "A simple python profiler supporting CUDA, ROCm, and Apple Silicon GPU backends"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
+dependencies = [
+    "psutil>=6.0",
+    "pandas>=2.2",
+    "plotly>=5.22",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+cuda = ["nvidia-ml-py3>=7.352.0"]
+rocm = ["amdsmi>=23.4"]
+dev  = ["pytest>=8.0"]
 
 [project.urls]
 "Homepage" = "https://github.com/yotamraz/pyprof"
-
