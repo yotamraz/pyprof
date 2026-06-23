@@ -8,8 +8,8 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 from pyprof.profile_cpu import ProfileCPU
-from pyprof.profile_gpu import ProfileGPU
 from pyprof.profile_memory import ProfileRAM
+from pyprof.gpu_factory import create_gpu_profiler
 
 
 class Profiler:
@@ -17,7 +17,7 @@ class Profiler:
     A simple profiling class capable of monitoring CPU/RAM/CUDA usage
     """
 
-    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.1):
+    def __init__(self, output_file_path=None, device=0, gpu=True, sleep_time=0.1, backend='auto'):
         self.pid = os.getpid()
         self.output_file_path = output_file_path
         self.device = device
@@ -27,9 +27,7 @@ class Profiler:
         # init
         self.cpu_profiler = ProfileCPU(pid=self.pid)
         self.ram_profiler = ProfileRAM(pid=self.pid)
-        self.gpu_profiler = None
-        if gpu:
-            self.gpu_profiler = ProfileGPU(pid=self.pid, device=self.device)
+        self.gpu_profiler = create_gpu_profiler(backend=backend if gpu else 'none', device=device)
 
         # init dataframe for result
         self.df_records = self._init_df()
@@ -75,15 +73,16 @@ class Profiler:
         print("")
         print("")
 
-        print(f"########## GPU_utilization_% ##########")
-        print(f"Peak: {self.df_records['GPU_utilization_%'].max()} %")
-        print("")
-        print("")
+        if self.gpu_profiler is not None:
+            print(f"########## GPU_utilization_% ##########")
+            print(f"Peak: {self.df_records['GPU_utilization_%'].max()} %")
+            print("")
+            print("")
 
-        print(f"########## total_GPU_memory_usage_MB ##########")
-        print(f"Peak: {self.df_records['total_GPU_memory_usage_MB'].max()} MB")
-        print("")
-        print("")
+            print(f"########## total_GPU_memory_usage_MB ##########")
+            print(f"Peak: {self.df_records['total_GPU_memory_usage_MB'].max()} MB")
+            print("")
+            print("")
 
         print(f"########## total runtime ##########")
         print(f"{self.end_time - self.start_time}")
@@ -132,17 +131,21 @@ class Profiler:
         timestamp = datetime.now()
         cpu_usage = self.cpu_profiler.get_usage()
         memory_usage = self.ram_profiler.get_usage()
-        gpu_util, gpu_usage = 0.0, 0.0
         if self.gpu_profiler is not None:
             gpu_util, gpu_usage = self.gpu_profiler.get_usage()
-
-        self.df_records.loc[len(self.df_records.index), :] = [
-            timestamp,
-            cpu_usage,
-            memory_usage,
-            gpu_util,
-            gpu_usage,
-        ]
+            self.df_records.loc[len(self.df_records.index), :] = [
+                timestamp,
+                cpu_usage,
+                memory_usage,
+                gpu_util,
+                gpu_usage,
+            ]
+        else:
+            self.df_records.loc[len(self.df_records.index), :] = [
+                timestamp,
+                cpu_usage,
+                memory_usage,
+            ]
 
     def _event_loop(self):
         """
@@ -172,7 +175,10 @@ class Profiler:
         """
         peak_cpu_util = self.df_records['CPU_utilization_%'].max()
         peak_memory_usage = self.df_records['total_RAM_memory_usage_MB'].max()
-        peak_gpu_util = self.df_records['GPU_utilization_%'].max()
-        peak_gpu_memory_usage = self.df_records['total_GPU_memory_usage_MB'].max()
-
+        if self.gpu_profiler is not None:
+            peak_gpu_util = self.df_records['GPU_utilization_%'].max()
+            peak_gpu_memory_usage = self.df_records['total_GPU_memory_usage_MB'].max()
+        else:
+            peak_gpu_util = None
+            peak_gpu_memory_usage = None
         return peak_cpu_util, peak_memory_usage, peak_gpu_util, peak_gpu_memory_usage
