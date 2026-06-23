@@ -245,6 +245,38 @@ class TestProfilerWithMockedGPU:
 
         mock_factory.assert_called_once_with(backend='none', device=0)
 
+    def test_profiler_exit_export_true_no_gpu(self, tmp_path):
+        """__exit__(export=True) calls _print_peak_results and _save_result_file when gpu=False."""
+        from pyprof.profiler import Profiler
+        output_file = tmp_path / 'output.html'
+
+        prof = Profiler(output_file_path=str(output_file), gpu=False, sleep_time=0.05)
+        prof.__enter__()
+        prof.__exit__(None, None, None, export=True)
+
+        assert output_file.exists()
+        df = prof.get_recorded_data()
+        assert 'GPU_utilization_%' not in df.columns
+
+    def test_profiler_exit_export_true_with_gpu(self, tmp_path):
+        """__exit__(export=True) exercises GPU branch in _print_peak_results when gpu_profiler is truthy."""
+        from pyprof.profiler import Profiler
+        from pyprof.profile_gpu_base import ProfileGPUBase
+        output_file = tmp_path / 'output.html'
+
+        mock_gpu = MagicMock(spec=ProfileGPUBase)
+        mock_gpu.get_usage.return_value = (50.0, 2048.0)
+
+        with patch('pyprof.profiler.create_gpu_profiler', return_value=mock_gpu):
+            prof = Profiler(output_file_path=str(output_file), gpu=True, sleep_time=0.05)
+            prof.__enter__()
+            prof.__exit__(None, None, None, export=True)
+
+        assert output_file.exists()
+        df = prof.get_recorded_data()
+        assert 'GPU_utilization_%' in df.columns
+        assert 'total_GPU_memory_usage_MB' in df.columns
+
 
 # ─── MockGPU backends ────────────────────────────────────────────────────────
 
