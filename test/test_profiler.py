@@ -377,6 +377,74 @@ class TestProfileGPUMPSMocked:
         assert mem == pytest.approx(512.0)
 
 
+class TestProfileGPUShimMocked:
+    """Mock-based tests for the backward-compat profile_gpu.py shim."""
+
+    def _make_mock_nvidia(self):
+        mock_nvidia = MagicMock()
+        mock_handle = MagicMock()
+        mock_nvidia.nvmlDeviceGetHandleByIndex.return_value = mock_handle
+        mock_nvidia.nvmlDeviceGetUtilizationRates.return_value = MagicMock(gpu=50)
+        mock_nvidia.nvmlDeviceGetMemoryInfo.return_value = MagicMock(used=1024 * 1024**2)
+        return mock_nvidia
+
+    def test_import_emits_deprecation_warning(self):
+        """Importing pyprof.profile_gpu must emit a DeprecationWarning."""
+        import importlib
+        import sys
+        mock_nvidia = self._make_mock_nvidia()
+        with patch.dict('sys.modules', {'nvidia_smi': mock_nvidia}):
+            import pyprof.profile_gpu as mod
+            importlib.reload(mod)
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                importlib.reload(mod)
+            deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert len(deprecation_warnings) >= 1
+
+    def test_deprecation_warning_message_mentions_profile_gpu(self):
+        """The DeprecationWarning message must reference pyprof.profile_gpu."""
+        import importlib
+        mock_nvidia = self._make_mock_nvidia()
+        with patch.dict('sys.modules', {'nvidia_smi': mock_nvidia}):
+            import pyprof.profile_gpu as mod
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                importlib.reload(mod)
+            deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert any('profile_gpu' in str(warning.message).lower() for warning in deprecation_warnings)
+
+    def test_profile_gpu_is_subclass_of_profile_gpu_cuda(self):
+        """ProfileGPU must be a subclass of ProfileGPUCUDA."""
+        import importlib
+        mock_nvidia = self._make_mock_nvidia()
+        with patch.dict('sys.modules', {'nvidia_smi': mock_nvidia}):
+            import pyprof.profile_gpu as mod
+            importlib.reload(mod)
+            from pyprof.profile_gpu_cuda import ProfileGPUCUDA
+            assert issubclass(mod.ProfileGPU, ProfileGPUCUDA)
+
+    def test_nvml_init_called_on_import(self):
+        """nvmlInit() must be called at module level when profile_gpu is imported."""
+        import importlib
+        mock_nvidia = self._make_mock_nvidia()
+        with patch.dict('sys.modules', {'nvidia_smi': mock_nvidia}):
+            import pyprof.profile_gpu as mod
+            importlib.reload(mod)
+            mock_nvidia.nvmlInit.assert_called()
+
+    def test_profile_gpu_constructor_sets_init_attributes(self):
+        """ProfileGPU.__init__ must set init_util and init_memory_usage attributes."""
+        import importlib
+        mock_nvidia = self._make_mock_nvidia()
+        with patch.dict('sys.modules', {'nvidia_smi': mock_nvidia}):
+            import pyprof.profile_gpu as mod
+            importlib.reload(mod)
+            gpu = mod.ProfileGPU(pid=None, device=0)
+            assert hasattr(gpu, 'init_util')
+            assert hasattr(gpu, 'init_memory_usage')
+
+
 # ─── Hardware integration tests (skipped by default) ────────────────────────
 
 @pytest.mark.cuda
