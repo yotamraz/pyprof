@@ -1,3 +1,5 @@
+
+
 # pyprof
 
 Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
@@ -8,7 +10,7 @@ Track your CPU/RAM/GPU(CUDA) utilization with an easy-to-use context wrapper
 
 ~$ cd pyprof
 
-~$ pip install -r requirements.txt
+~$ pip install .
 ```
 
 ## Use
